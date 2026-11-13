@@ -13,6 +13,6 @@ RESTful API for managing tasks
 - Controllers only handle HTTP requests; logic goes into service class
 
 ## Rules
-- Every new endpoint needs a MockMvc test
+- Every new endpoint needs a WebMvcTest and RestTestClient test
 - Run the tests before saying you're done
 - Test response status code
