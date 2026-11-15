@@ -108,4 +108,30 @@ public class WebLayerTasksTest {
                 .expectStatus().isBadRequest();
     }
 
+    @Test
+    void countTasksTest() {
+        when(repository.count()).thenReturn(5L);
+        when(repository.countByDone(true)).thenReturn(2L);
+
+        client.get().uri("/tasks/count")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.total").isEqualTo(5)
+                .jsonPath("$.done").isEqualTo(2);
+    }
+
+    @Test
+    void countTasksEmptyTest() {
+        when(repository.count()).thenReturn(0L);
+        when(repository.countByDone(true)).thenReturn(0L);
+
+        client.get().uri("/tasks/count")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.total").isEqualTo(0)
+                .jsonPath("$.done").isEqualTo(0);
+    }
+
 }

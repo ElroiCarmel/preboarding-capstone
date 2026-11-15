@@ -6,4 +6,6 @@ import java.util.List;
 
 interface TasksRepository extends JpaRepository<Task, Long> {
     List<Task> findByDone(Boolean done);
+
+    long countByDone(Boolean done);
 }
