@@ -19,8 +19,9 @@ public class TasksController {
     }
 
     @GetMapping()
-    List<Task> all() {
-        return repository.findAll();
+    List<Task> all(@RequestParam(required = false) Boolean done) {
+        if (done == null) return repository.findAll();
+        return repository.findByDone(done);
     }
 
     @GetMapping("/{id}")
@@ -33,6 +34,16 @@ public class TasksController {
     Task creat(@RequestBody CreateTaskRequest newTask) {
         if (newTask.title().isBlank()) throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
         return repository.save(new Task(newTask.title(), newTask.done()));
+    }
+
+    @PutMapping("/{id}")
+    Task update(@PathVariable Long id, @RequestBody CreateTaskRequest updatedTask) {
+        if (updatedTask.title() == null || updatedTask.title().isBlank())
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+        Task task = repository.findById(id).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        task.setTitle(updatedTask.title());
+        task.setDone(updatedTask.done());
+        return repository.save(task);
     }
 
     @DeleteMapping("/{id}")

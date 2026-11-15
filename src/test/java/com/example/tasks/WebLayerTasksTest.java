@@ -8,8 +8,10 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
+import java.util.List;
 import java.util.Optional;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 @WebMvcTest
@@ -31,8 +33,7 @@ public class WebLayerTasksTest {
 
     @Test
     void getOnlyDoneTasksTest() {
-        when(repository.findById(1L)).thenReturn(Optional.of(new Task("Study", false)));
-        when(repository.findById(2L)).thenReturn(Optional.of(new Task("Exercise", true)));
+        when(repository.findByDone(true)).thenReturn(List.of(new Task("Exercise", true)));
 
         client.get().uri("/tasks?done=true")
                 .exchange()
@@ -80,6 +81,7 @@ public class WebLayerTasksTest {
     @Test
     void updateTaskTest() {
         when(repository.findById(1L)).thenReturn(Optional.of(new Task("Study", false)));
+        when(repository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
 
         CreateTaskRequest updatedTask = new CreateTaskRequest("Study", true);
         client.put().uri("/tasks/{id}", 1L)
@@ -88,6 +90,22 @@ public class WebLayerTasksTest {
                 .expectStatus().isOk()
                 .expectBody()
                 .jsonPath("done").isEqualTo(true);
+    }
+
+    @Test
+    void updateTaskNotExistsTest() {
+        client.put().uri("/tasks/{id}", 99999L)
+                .body(new CreateTaskRequest("Study", true))
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void updateTaskWithBlankTitleTest() {
+        client.put().uri("/tasks/{id}", 1L)
+                .body(new CreateTaskRequest("   ", true))
+                .exchange()
+                .expectStatus().isBadRequest();
     }
 
 }
