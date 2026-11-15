@@ -5,9 +5,14 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.resttestclient.autoconfigure.AutoConfigureRestTestClient;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.client.RestTestClient;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import java.util.List;
+import java.util.Optional;
+
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 
 @WebMvcTest
 @AutoConfigureRestTestClient
@@ -16,56 +21,50 @@ public class WebLayerTasksTest {
     @Autowired
     private RestTestClient client;
 
+    @MockitoBean
+    private TasksRepository repository;
 
     @Test
     void getAllTasksTest() {
         client.get().uri("/tasks")
                 .exchange()
+                .expectStatus().isOk();
+    }
+
+    @Test
+    void getOnlyDoneTasksTest() {
+        when(repository.findByDone(true)).thenReturn(List.of(new Task("Exercise", true)));
+
+        client.get().uri("/tasks?done=true")
+                .exchange()
                 .expectStatus().isOk()
                 .expectBody()
-                .jsonPath("$.length()").isEqualTo(3);
+                .jsonPath("$.size()").isEqualTo(1);
     }
 
     @Test
     void oneTest() {
-        client.get().uri("/tasks/0")
+        when(repository.findById(1L)).thenReturn(Optional.of(new Task("Study", false)));
+
+        client.get().uri("/tasks/{id}", 1L)
                 .exchange()
                 .expectStatus().isOk()
-                .expectBody(Task.class)
-                .consumeWith(result -> {
-                    Task t = result.getResponseBody();
-                    assertThat(t.id()).isEqualTo(0);
-                    assertThat(t.title()).isEqualTo("Pray");
-                    assertThat(t.done()).isFalse();
-                });
-    }
-
-    @Test
-    void oneNotExistsTest() {
-        client.get().uri("/tasks/12")
-                .exchange()
-                .expectStatus().isNotFound();
+                .expectBody()
+                .jsonPath("title").isEqualTo("Study");
     }
 
     @Test
     void createTaskTest() {
-        Task task = new Task(5, "Homework", true);
+        CreateTaskRequest task = new CreateTaskRequest("Homework", false);
         client.post().uri("/tasks")
                 .body(task)
                 .exchange()
                 .expectStatus().isCreated();
-
-        // Test the new task is in the list
-        client.get().uri("/tasks/5")
-                .exchange()
-                .expectStatus().isOk()
-                .expectBody()
-                .jsonPath("title").isEqualTo("Homework");
     }
 
     @Test
-    void createBlankTitleTest() {
-        Task task = new Task(5, "", true);
+    void createTaskWithBlankTitleTest() {
+        CreateTaskRequest task = new CreateTaskRequest("   ", false);
         client.post().uri("/tasks")
                 .body(task)
                 .exchange()
@@ -73,12 +72,40 @@ public class WebLayerTasksTest {
     }
 
     @Test
-    void deleteTest() {
-        client.delete().uri("/tasks/1")
-                .exchange()
-                .expectStatus().isNoContent();
-        client.get().uri("/tasks/1")
+    void getTaskNotExistsTest() {
+        client.get().uri("/tasks/99999")
                 .exchange()
                 .expectStatus().isNotFound();
     }
+
+    @Test
+    void updateTaskTest() {
+        when(repository.findById(1L)).thenReturn(Optional.of(new Task("Study", false)));
+        when(repository.save(any(Task.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        CreateTaskRequest updatedTask = new CreateTaskRequest("Study", true);
+        client.put().uri("/tasks/{id}", 1L)
+                .body(updatedTask)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("done").isEqualTo(true);
+    }
+
+    @Test
+    void updateTaskNotExistsTest() {
+        client.put().uri("/tasks/{id}", 99999L)
+                .body(new CreateTaskRequest("Study", true))
+                .exchange()
+                .expectStatus().isNotFound();
+    }
+
+    @Test
+    void updateTaskWithBlankTitleTest() {
+        client.put().uri("/tasks/{id}", 1L)
+                .body(new CreateTaskRequest("   ", true))
+                .exchange()
+                .expectStatus().isBadRequest();
+    }
+
 }
