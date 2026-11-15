@@ -8,6 +8,8 @@ import java.util.List;
 
 record CreateTaskRequest(String title, Boolean done) {}
 
+record TaskCountResponse(long total, long done) {}
+
 @RestController
 @RequestMapping("/tasks")
 public class TasksController {
@@ -22,6 +24,11 @@ public class TasksController {
     List<Task> all(@RequestParam(required = false) Boolean done) {
         if (done == null) return repository.findAll();
         return repository.findByDone(done);
+    }
+
+    @GetMapping("/count")
+    TaskCountResponse count() {
+        return new TaskCountResponse(repository.count(), repository.countByDone(true));
     }
 
     @GetMapping("/{id}")
