@@ -30,6 +30,18 @@ public class WebLayerTasksTest {
     }
 
     @Test
+    void getOnlyDoneTasksTest() {
+        when(repository.findById(1L)).thenReturn(Optional.of(new Task("Study", false)));
+        when(repository.findById(2L)).thenReturn(Optional.of(new Task("Exercise", true)));
+
+        client.get().uri("/tasks?done=true")
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("$.size()").isEqualTo(1);
+    }
+
+    @Test
     void oneTest() {
         when(repository.findById(1L)).thenReturn(Optional.of(new Task("Study", false)));
 
@@ -63,6 +75,19 @@ public class WebLayerTasksTest {
         client.get().uri("/tasks/99999")
                 .exchange()
                 .expectStatus().isNotFound();
+    }
+
+    @Test
+    void updateTaskTest() {
+        when(repository.findById(1L)).thenReturn(Optional.of(new Task("Study", false)));
+
+        CreateTaskRequest updatedTask = new CreateTaskRequest("Study", true);
+        client.put().uri("/tasks/{id}", 1L)
+                .body(updatedTask)
+                .exchange()
+                .expectStatus().isOk()
+                .expectBody()
+                .jsonPath("done").isEqualTo(true);
     }
 
 }
